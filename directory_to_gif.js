@@ -19,13 +19,13 @@
       }
 
     async function recordModel(options, out_path) {
-        
+
         Modes.options.edit.select();
         SharedActions.run('select_all');
         Blockbench.dispatchEvent('select_all');
         Modes.options.animate.select();
         BarItems.focus_on_selection.trigger("click");
-        await fit_model();
+        await fit_model(options.zoom_in, options.zoom_out);
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -80,10 +80,20 @@
         return true;
     }
 
-    async function fit_model() {
-        while (!does_model_fit()) {
+    async function fit_model(zoom_in, zoom_out) {
+        if (zoom_in) {
+            while (does_model_fit()) {
+                setZoomLevel('in');
+                await new Promise((resolve) => setTimeout(resolve, 1));
+            }
             setZoomLevel('out');
-            await new Promise((resolve) => setTimeout(resolve, 1));
+            setZoomLevel('out');
+        }
+        if (zoom_out) {
+            while (!does_model_fit()) {
+                setZoomLevel('out');
+                await new Promise((resolve) => setTimeout(resolve, 1));
+            }
         }
     }
 
@@ -97,11 +107,11 @@
                 //     apng: 'APNG',
                 //     png_sequence: 'dialog.create_gif.format.png_sequence',
                 // }},
-                input_dir:   {label: 'Input Directory', type: 'folder'},
-                input_rec: 	 {label: 'Scan subdirectories', type: 'checkbox', value: true},
+                input_dir:	{label: 'Input Directory', type: 'folder'},
+                input_rec:	{label: 'Scan subdirectories', type: 'checkbox', value: true},
                 '_0': '_',
-                output_dir:  {label: 'Output Directory', type: 'folder'},
-                output_struct: 	{label: 'Reconstruct input folder structure', type: 'checkbox'},
+                output_dir:	{label: 'Output Directory', type: 'folder'},
+                output_struct:	{label: 'Reconstruct input folder structure', type: 'checkbox'},
                 '_1': '_',
                 length_mode: {label: 'dialog.create_gif.length_mode', type: 'select', default: 'seconds', options: {
                     seconds: 'dialog.create_gif.length_mode.seconds',
@@ -109,16 +119,19 @@
                     animation: 'dialog.create_gif.length_mode.animation',
                     turntable: 'dialog.create_gif.length_mode.turntable',
                 }},
-                length: 	{label: 'dialog.create_gif.length', type: 'number', value: 5, min: 0.1, step: 0.25, condition: (form) => ['seconds', 'frames'].includes(form.length_mode)},
-                fps: 		{label: 'dialog.create_gif.fps', type: 'number', value: 20, min: 0.5, max: 120},
-                resolution: {type: 'vector', label: 'dialog.advanced_screenshot.resolution', dimensions: 2, value: [500, 500], toggle_enabled: true, toggle_default: false},
-                zoom: 		{type: 'number', label: 'dialog.advanced_screenshot.zoom', value: 42, toggle_enabled: true, toggle_default: false},
+                length:		{label: 'dialog.create_gif.length', type: 'number', value: 5, min: 0.1, step: 0.25, condition: (form) => ['seconds', 'frames'].includes(form.length_mode)},
+                fps:		{label: 'dialog.create_gif.fps', type: 'number', value: 20, min: 0.5, max: 120},
+                resolution:	{type: 'vector', label: 'dialog.advanced_screenshot.resolution', dimensions: 2, value: [500, 500], toggle_enabled: true, toggle_default: false},
+                zoom:		{type: 'number', label: 'dialog.advanced_screenshot.zoom', value: 42, toggle_enabled: true, toggle_default: false},
                 '_2': '_',
                 pixelate:	{label: 'dialog.create_gif.pixelate', type: 'range', value: 1, min: 1, max: 8, step: 1},
-                color:  	{label: 'dialog.create_gif.color', type: 'color', value: '#00000000'},
-                bg_image:  	{label: 'dialog.create_gif.bg_image', type: 'file', extensions: ['png'], readtype: 'image', filetype: 'PNG'},
+                color:		{label: 'dialog.create_gif.color', type: 'color', value: '#00000000'},
+                bg_image:	{label: 'dialog.create_gif.bg_image', type: 'file', extensions: ['png'], readtype: 'image', filetype: 'PNG'},
                 turn:		{label: 'dialog.create_gif.turn', type: 'number', value: 0, min: -90, max: 90, description: 'dialog.create_gif.turn.desc'},
-                play: 		{label: 'dialog.create_gif.play', type: 'checkbox'},
+                play:		{label: 'dialog.create_gif.play', type: 'checkbox'},
+                '_3': '_',
+                zoom_in:	{label: 'Zoom in to fit', type: 'checkbox', value: true},
+                zoom_out:	{label: 'Zoom out to fit', type: 'checkbox', value: true},
             },
             onConfirm(formData) {
                 let background = formData.color.toHex8String() != '#00000000' ? formData.color.toHexString() : undefined;
@@ -143,6 +156,8 @@
                     background_image: formData.bg_image,
                     play: formData.play,
                     turnspeed: formData.turn,
+                    zoom_in: formData.zoom_in,
+                    zoom_out: formData.zoom_out
                 })
             }
         })
