@@ -68,7 +68,7 @@
                 color:  	{label: 'dialog.create_gif.color', type: 'color', value: '#00000000'},
                 bg_image:  	{label: 'dialog.create_gif.bg_image', type: 'file', extensions: ['png'], readtype: 'image', filetype: 'PNG'},
                 turn:		{label: 'dialog.create_gif.turn', type: 'number', value: 0, min: -90, max: 90, description: 'dialog.create_gif.turn.desc'},
-                play: 		{label: 'dialog.create_gif.play', type: 'checkbox', condition: () => Animator.open},
+                play: 		{label: 'dialog.create_gif.play', type: 'checkbox'},
             },
             onConfirm(formData) {
                 let background = formData.color.toHex8String() != '#00000000' ? formData.color.toHexString() : undefined;
