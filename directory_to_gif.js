@@ -19,6 +19,10 @@
       }
 
     async function recordModel(options, out_path) {
+        Modes.options.edit.select();
+        SharedActions.run('select_all');
+        Blockbench.dispatchEvent('select_all');
+        BarItems.focus_on_selection.trigger("click");
         Modes.options.animate.select();
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -131,6 +135,7 @@
 
                 getFilesRecursively(inputDir);
                 for (const path of files) {
+                    let was_open = ModelProject.all.findIndex(project => project.save_path.replaceAll('\\', '/') == path || project.export_path.replaceAll('\\', '/') == path) !== -1;
                     shell.openPath(path)
                     await new Promise((resolve) => setTimeout(resolve, 1000));
                     let out_dir = outputDir;
@@ -139,9 +144,8 @@
                         if (!fs.existsSync(out_dir)) fs.mkdirSync(out_dir, { recursive: true });
                     }
                     let out_path = `${out_dir}/${Project.name}.gif`
-                    console.log(out_path);
                     await recordModel(options, `${out_dir}/${Project.name}.gif`)
-                    Project.close();
+                    if (!was_open) Project.close();
                 }
             },
             MenuBar.addAction(button, 'filter');
