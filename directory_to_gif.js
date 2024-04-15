@@ -19,11 +19,14 @@
       }
 
     async function recordModel(options, out_path) {
+        
         Modes.options.edit.select();
         SharedActions.run('select_all');
         Blockbench.dispatchEvent('select_all');
-        BarItems.focus_on_selection.trigger("click");
         Modes.options.animate.select();
+        BarItems.focus_on_selection.trigger("click");
+        await fit_model();
+
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         let gifDataPromise = new Promise((resolve, reject) => {
@@ -35,6 +38,53 @@
 
         let dataURL = await gifDataPromise;
         await dataURLtoFile(dataURL, out_path);
+    }
+
+    function does_model_fit() {
+        const raycaster = new THREE.Raycaster();
+        let pointer = new THREE.Vector2();
+    
+        var objects = []
+        Outliner.elements.forEach(element => {
+            if (element.mesh && element.mesh.geometry && element.visibility && !element.locked) {
+                objects.push(element.mesh);
+            }
+        })
+
+        function is_object_hit(x, y) {
+            pointer.x = ( x / Preview.selected.width ) * 2 - 1;
+            pointer.y = - ( y / Preview.selected.height ) * 2 + 1;
+            raycaster.setFromCamera(pointer, Preview.selected.camera)
+            return raycaster.intersectObjects(objects).length > 0;
+        }
+    
+        // check top and bottom pixels
+        let found_object = false;
+        for (let y of [0, Preview.selected.height]) {
+            for (let x = 0; x < Preview.selected.width; x++) {
+                found_object = is_object_hit(x, y);
+                if (found_object) return false;
+            }
+        }
+    
+        // check left and right pixels
+        if (!found_object) {
+            for (let x of [0, Preview.selected.width]) {
+                for (let y = 0; y < Preview.selected.height; y++) {
+                    found_object = is_object_hit(x, y);
+                    if (found_object) return false;
+                }
+            }
+        }
+    
+        return true;
+    }
+
+    async function fit_model() {
+        while (!does_model_fit()) {
+            setZoomLevel('out');
+            await new Promise((resolve) => setTimeout(resolve, 1));
+        }
     }
 
     let dia = new Dialog({
