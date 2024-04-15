@@ -73,11 +73,13 @@
         }
     
         return true;
-    }
+    } 
 
     async function fit_model(zoom_in, zoom_out) {
+        let zoom_max = 1000;
         if (zoom_in) {
-            while (does_model_fit()) {
+            for (let i = 0; i < zoom_max; i++) {
+                if (!does_model_fit()) break;
                 setZoomLevel('in');
                 await new Promise((resolve) => setTimeout(resolve, 1));
             }
@@ -85,7 +87,8 @@
             setZoomLevel('out');
         }
         if (zoom_out) {
-            while (!does_model_fit()) {
+            for (let i = 0; i < zoom_max; i++) {
+                if (does_model_fit()) break;
                 setZoomLevel('out');
                 await new Promise((resolve) => setTimeout(resolve, 1));
             }
