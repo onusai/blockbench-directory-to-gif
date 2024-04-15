@@ -46,7 +46,7 @@
     
         var objects = []
         Outliner.elements.forEach(element => {
-            if (element.mesh && element.mesh.geometry && element.visibility && !element.locked) {
+            if (element.mesh && element.mesh.geometry && element.visibility) {
                 objects.push(element.mesh);
             }
         })
