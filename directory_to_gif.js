@@ -59,21 +59,16 @@
         }
     
         // check top and bottom pixels
-        let found_object = false;
         for (let y of [0, Preview.selected.height]) {
             for (let x = 0; x < Preview.selected.width; x++) {
-                found_object = is_object_hit(x, y);
-                if (found_object) return false;
+                if (is_object_hit(x, y)) return false;
             }
         }
     
         // check left and right pixels
-        if (!found_object) {
-            for (let x of [0, Preview.selected.width]) {
-                for (let y = 0; y < Preview.selected.height; y++) {
-                    found_object = is_object_hit(x, y);
-                    if (found_object) return false;
-                }
+        for (let x of [0, Preview.selected.width]) {
+            for (let y = 0; y < Preview.selected.height; y++) {
+                if (is_object_hit(x, y)) return false;
             }
         }
     
@@ -130,8 +125,8 @@
                 turn:		{label: 'dialog.create_gif.turn', type: 'number', value: 0, min: -90, max: 90, description: 'dialog.create_gif.turn.desc'},
                 play:		{label: 'dialog.create_gif.play', type: 'checkbox'},
                 '_3': '_',
-                zoom_in:	{label: 'Zoom in to fit', type: 'checkbox', value: true},
-                zoom_out:	{label: 'Zoom out to fit', type: 'checkbox', value: true},
+                zoom_in:	{label: 'Zoom in to fit model', type: 'checkbox', value: true},
+                zoom_out:	{label: 'Zoom out to fit model', type: 'checkbox', value: true},
             },
             onConfirm(formData) {
                 let background = formData.color.toHex8String() != '#00000000' ? formData.color.toHexString() : undefined;
