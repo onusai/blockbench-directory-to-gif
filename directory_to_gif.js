@@ -155,8 +155,8 @@
                 turn:		{label: 'dialog.create_gif.turn', type: 'number', value: 0, min: -90, max: 90, description: 'dialog.create_gif.turn.desc'},
                 '_3': '_',
                 play:		{label: 'Record Animations', type: 'checkbox', value: false},
-                anim_include:	{label: 'Include if name contains', type: 'text', placeholder: 'e.g. walk', condition: (form) => form.play},
-                anim_exclude:	{label: 'Exclude if name contains', type: 'text', placeholder: 'e.g. hurt', condition: (form) => form.play},
+                anim_include:	{label: 'Include if name contains', type: 'text', placeholder: 'e.g. walk, run, idle', condition: (form) => form.play},
+                anim_exclude:	{label: 'Exclude if name contains', type: 'text', placeholder: 'e.g. hurt, death', condition: (form) => form.play},
                 anim_skip_existing:	{label: 'Skip if GIF already exists', type: 'checkbox', value: false, condition: (form) => form.play},
                 '_4': '_',
                 zoom_in:	{label: 'Zoom in to fit model', type: 'checkbox', value: true},
@@ -259,17 +259,25 @@
 
                     if (options.play && Animator && Animator.animations && Animator.animations.length > 0) {
                         // Record each animation
-                        const includeFilter = options.anim_include ? options.anim_include.toLowerCase().trim() : '';
-                        const excludeFilter = options.anim_exclude ? options.anim_exclude.toLowerCase().trim() : '';
+                        // Parse comma-separated filters into arrays
+                        const includeFilters = options.anim_include
+                            ? options.anim_include.split(',').map(f => f.toLowerCase().trim()).filter(f => f.length > 0)
+                            : [];
+                        const excludeFilters = options.anim_exclude
+                            ? options.anim_exclude.split(',').map(f => f.toLowerCase().trim()).filter(f => f.length > 0)
+                            : [];
                         console.log(Animator.animations)
                         for (const anim of Animator.animations) {
                             const animName = anim.name || 'unnamed';
+                            const animNameLower = animName.toLowerCase();
                             
-                            // Apply filters
-                            if (includeFilter && !animName.toLowerCase().includes(includeFilter)) {
+                            // Apply include filters - animation must match at least one include filter (if any are specified)
+                            if (includeFilters.length > 0 && !includeFilters.some(filter => animNameLower.includes(filter))) {
                                 continue;
                             }
-                            if (excludeFilter && animName.toLowerCase().includes(excludeFilter)) {
+                            
+                            // Apply exclude filters - animation must not match any exclude filter
+                            if (excludeFilters.length > 0 && excludeFilters.some(filter => animNameLower.includes(filter))) {
                                 continue;
                             }
 
