@@ -1,8 +1,10 @@
 
 (function() {
-    
-    var button;
 
+    const fs = require('fs');
+    const { Buffer } = require('buffer');
+
+    var button;
     async function dataURLtoFile(dataurl, filename) {
         var arr = dataurl.split(","),
           mime = arr[0].match(/:(.*?);/)[1],
@@ -199,8 +201,10 @@
                 getFilesRecursively(inputDir);
                 for (const path of files) {
                     let was_open = ModelProject.all.findIndex(project => project.save_path.replaceAll('\\', '/') == path || project.export_path.replaceAll('\\', '/') == path) !== -1;
-                    shell.openPath(path)
-                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                    Blockbench.read([path], {}, files => {
+						loadModelFile(files[0]);
+					})
+                    await new Promise((resolve) => setTimeout(resolve, 500));
                     let out_dir = outputDir;
                     if (options.output_struct) {
                         out_dir += path.slice(inputDir.length, path.length-1-`${Project.name}.bbmodel`.length)
