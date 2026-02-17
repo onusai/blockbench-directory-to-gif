@@ -20,13 +20,37 @@
         fs.writeFile(filename, buffer, () => {} );
       }
 
-    async function recordModel(options, out_path) {
+    async function selectAnimation(anim_uuid) {
+        const anim_list = document.getElementById('animations_list');
+        if (!anim_list) return false;
+        
+        const anim_item = anim_list.querySelector(`li[anim_id="${anim_uuid}"]`);
+        if (anim_item) {
+            anim_item.click();
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            return true;
+        }
+        return false;
+    }
 
-        Modes.options.edit.select();
-        SharedActions.run('select_all');
-        Blockbench.dispatchEvent('select_all');
-        Modes.options.animate.select();
-        BarItems.focus_on_selection.trigger("click");
+    async function recordModel(options, out_path, animation) {
+
+        // Select animation if provided
+        if (animation) {
+            const selected = await selectAnimation(animation.uuid);
+            if (!selected) {
+                console.warn(`Could not select animation: ${animation.name}`);
+                return false;
+            }
+            // Use animation length for recording
+            if (options.length_mode === 'animation') {
+                options.length = animation.length;
+            }
+        }
+        main_preview.loadAnglePreset(DefaultCameraPresets[0])
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
         await fit_model(options.zoom_in, options.zoom_out);
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -40,6 +64,7 @@
 
         let dataURL = await gifDataPromise;
         await dataURLtoFile(dataURL, out_path);
+        return true;
     }
 
     function does_model_fit() {
@@ -108,7 +133,7 @@
                 //     png_sequence: 'dialog.create_gif.format.png_sequence',
                 // }},
                 input_dir:	{label: 'Input Directory', type: 'folder'},
-                input_rec:	{label: 'Scan subdirectories', type: 'checkbox', value: true},
+                input_rec:	{label: 'Scan subdirectories', type: 'checkbox', value: false},
                 '_0': '_',
                 output_dir:	{label: 'Output Directory', type: 'folder'},
                 output_struct:	{label: 'Reconstruct input folder structure', type: 'checkbox'},
@@ -127,9 +152,13 @@
                 pixelate:	{label: 'dialog.create_gif.pixelate', type: 'range', value: 1, min: 1, max: 8, step: 1},
                 color:		{label: 'dialog.create_gif.color', type: 'color', value: '#00000000'},
                 bg_image:	{label: 'dialog.create_gif.bg_image', type: 'file', extensions: ['png'], readtype: 'image', filetype: 'PNG'},
-                turn:		{label: 'dialog.create_gif.turn', type: 'number', value: 6, min: -90, max: 90, description: 'dialog.create_gif.turn.desc'},
-                play:		{label: 'dialog.create_gif.play', type: 'checkbox'},
+                turn:		{label: 'dialog.create_gif.turn', type: 'number', value: 0, min: -90, max: 90, description: 'dialog.create_gif.turn.desc'},
                 '_3': '_',
+                play:		{label: 'Record Animations', type: 'checkbox', value: false},
+                anim_include:	{label: 'Include if name contains', type: 'text', placeholder: 'e.g. walk', condition: (form) => form.play},
+                anim_exclude:	{label: 'Exclude if name contains', type: 'text', placeholder: 'e.g. hurt', condition: (form) => form.play},
+                anim_skip_existing:	{label: 'Skip if GIF already exists', type: 'checkbox', value: false, condition: (form) => form.play},
+                '_4': '_',
                 zoom_in:	{label: 'Zoom in to fit model', type: 'checkbox', value: true},
                 zoom_out:	{label: 'Zoom out to fit model', type: 'checkbox', value: true},
             },
@@ -155,6 +184,9 @@
                     background,
                     background_image: formData.bg_image,
                     play: formData.play,
+                    anim_include: formData.anim_include,
+                    anim_exclude: formData.anim_exclude,
+                    anim_skip_existing: formData.anim_skip_existing,
                     turnspeed: formData.turn,
                     zoom_in: formData.zoom_in,
                     zoom_out: formData.zoom_out
@@ -183,9 +215,11 @@
             button.beginRecord = async function(options) {
                 let inputDir = options.input_dir.replaceAll('\\', '/');
                 let outputDir = options.output_dir.replaceAll('\\', '/');
+
                 if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
 
                 let files = [];
+
                 const getFilesRecursively = (directory) => {
                     const filesInDirectory = fs.readdirSync(directory);
                     for (const file of filesInDirectory) {
@@ -193,25 +227,68 @@
                         if (fs.statSync(absolute).isDirectory()) {
                             if (options.input_rec) getFilesRecursively(absolute);
                         } else {
-                            if (absolute.endsWith(".bbmodel")) files.push(absolute);
+                            if (absolute.endsWith(".bbmodel") || absolute.endsWith(".blockymodel")) {
+                                files.push(absolute);
+                            }
                         }
                     }
                 };
 
                 getFilesRecursively(inputDir);
+
                 for (const path of files) {
                     let was_open = ModelProject.all.findIndex(project => project.save_path.replaceAll('\\', '/') == path || project.export_path.replaceAll('\\', '/') == path) !== -1;
                     Blockbench.read([path], {}, files => {
 						loadModelFile(files[0]);
 					})
                     await new Promise((resolve) => setTimeout(resolve, 500));
+
+                    Modes.options.edit.select();
+                    SharedActions.run('select_all');
+                    Blockbench.dispatchEvent('select_all');
+                    Modes.options.animate.select();
+                    BarItems.focus_on_selection.trigger("click");
+
+                    await new Promise((resolve) => setTimeout(resolve, 500));
+
                     let out_dir = outputDir;
                     if (options.output_struct) {
                         out_dir += path.slice(inputDir.length, path.length-1-`${Project.name}.bbmodel`.length)
                         if (!fs.existsSync(out_dir)) fs.mkdirSync(out_dir, { recursive: true });
                     }
-                    let out_path = `${out_dir}/${Project.name}.gif`
-                    await recordModel(options, `${out_dir}/${Project.name}.gif`)
+
+                    if (options.play && Animator && Animator.animations && Animator.animations.length > 0) {
+                        // Record each animation
+                        const includeFilter = options.anim_include ? options.anim_include.toLowerCase().trim() : '';
+                        const excludeFilter = options.anim_exclude ? options.anim_exclude.toLowerCase().trim() : '';
+                        console.log(Animator.animations)
+                        for (const anim of Animator.animations) {
+                            const animName = anim.name || 'unnamed';
+                            
+                            // Apply filters
+                            if (includeFilter && !animName.toLowerCase().includes(includeFilter)) {
+                                continue;
+                            }
+                            if (excludeFilter && animName.toLowerCase().includes(excludeFilter)) {
+                                continue;
+                            }
+
+                            let out_path = `${out_dir}/${Project.name}_${animName}.gif`;
+
+                            // Check if file exists and skip if requested
+                            if (options.anim_skip_existing && fs.existsSync(out_path)) {
+                                console.log(`Skipping ${out_path} - already exists`);
+                                continue;
+                            }
+
+                            await recordModel(options, out_path, anim);
+                        }
+                    } else {
+                        // Record without animation (static model)
+                        let out_path = `${out_dir}/${Project.name}.gif`;
+                        await recordModel(options, out_path, null);
+                    }
+
                     if (!was_open) Project.close();
                 }
             },
