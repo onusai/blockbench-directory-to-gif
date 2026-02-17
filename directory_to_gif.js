@@ -266,7 +266,7 @@
                         const excludeFilters = options.anim_exclude
                             ? options.anim_exclude.split(',').map(f => f.toLowerCase().trim()).filter(f => f.length > 0)
                             : [];
-                        console.log(Animator.animations)
+                        
                         for (const anim of Animator.animations) {
                             const animName = anim.name || 'unnamed';
                             const animNameLower = animName.toLowerCase();
